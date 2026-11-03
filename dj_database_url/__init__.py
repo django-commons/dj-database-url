@@ -239,6 +239,7 @@ def config(
     disable_server_side_cursors: bool = False,
     ssl_require: bool = False,
     test_options: dict[str, Any] | None = None,
+    pool: bool | dict[str, Any] | None = None,
 ) -> DBConfig:
     """Returns configured DATABASE dictionary from DATABASE_URL."""
     s = os.environ.get(env, default)
@@ -255,6 +256,7 @@ def config(
             disable_server_side_cursors,
             ssl_require,
             test_options,
+            pool,
         )
 
     return {}
@@ -268,6 +270,7 @@ def parse(
     disable_server_side_cursors: bool = False,
     ssl_require: bool = False,
     test_options: dict[str, Any] | None = None,
+    pool: bool | dict[str, Any] | None = None,
 ) -> DBConfig:
     """Parses a database URL and returns configured DATABASE dictionary."""
     settings = _convert_to_settings(
@@ -276,6 +279,7 @@ def parse(
         conn_health_checks,
         disable_server_side_cursors,
         test_options,
+        pool,
     )
 
     if url == "sqlite://:memory:":
@@ -293,6 +297,16 @@ def parse(
         path = split_result.path[1:]
         query = urlparse.parse_qs(split_result.query)
         options = {k: _parse_option_values(k, v) for k, v in query.items()}
+        pool_options = {}
+        for k in list(options.keys()):
+            if k.startswith("pool__"):
+                sub_key = k[len("pool__") :]
+                pool_options[sub_key] = options.pop(k)
+        if pool_options:
+            if isinstance(options.get("pool"), dict):
+                options["pool"].update(pool_options)
+            else:
+                options["pool"] = pool_options
         parsed_config: DBConfig = {
             "ENGINE": engine_obj.backend,
             "USER": urlparse.unquote(split_result.username or ""),
@@ -312,7 +326,14 @@ def parse(
     engine_obj.postprocess(parsed_config)
 
     # Update the final config with any settings passed in explicitly.
-    parsed_config["OPTIONS"].update(settings.pop("OPTIONS", {}))
+    extra_options = settings.pop("OPTIONS", {})
+    if (
+        "pool" in extra_options
+        and isinstance(extra_options["pool"], dict)
+        and isinstance(parsed_config["OPTIONS"].get("pool"), dict)
+    ):
+        parsed_config["OPTIONS"]["pool"].update(extra_options.pop("pool"))
+    parsed_config["OPTIONS"].update(extra_options)
     parsed_config.update(settings)
 
     if ssl_require:
@@ -363,6 +384,7 @@ def _convert_to_settings(
     conn_health_checks: bool,
     disable_server_side_cursors: bool,
     test_options: dict[str, Any] | None,
+    pool: bool | dict[str, Any] | None = None,
 ) -> DBConfig:
     settings: DBConfig = {
         "CONN_MAX_AGE": conn_max_age,
@@ -373,4 +395,6 @@ def _convert_to_settings(
         settings["ENGINE"] = engine
     if test_options:
         settings["TEST"] = test_options
+    if pool is not None:
+        settings["OPTIONS"] = {"pool": pool}
     return settings
