@@ -894,6 +894,57 @@ class DatabaseTestSuite(unittest.TestCase):
 
         assert url["DISABLE_SERVER_SIDE_CURSORS"] is True
 
+    def test_pool_boolean_kwarg(self) -> None:
+        url = dj_database_url.parse("postgres://u:p@localhost/db", pool=True)
+        assert url["OPTIONS"]["pool"] is True
+
+        url_false = dj_database_url.parse("postgres://u:p@localhost/db", pool=False)
+        assert url_false["OPTIONS"]["pool"] is False
+
+    def test_pool_dict_kwarg(self) -> None:
+        pool_config = {"min_size": 4, "max_size": 32, "timeout": 30}
+        url = dj_database_url.parse("postgres://u:p@localhost/db", pool=pool_config)
+        assert url["OPTIONS"]["pool"] == pool_config
+
+    @mock.patch.dict(
+        os.environ,
+        {"DATABASE_URL": "postgres://u:p@localhost/db"},
+    )
+    def test_pool_config_kwarg(self) -> None:
+        url = dj_database_url.config(pool=True)
+        assert url["OPTIONS"]["pool"] is True
+
+        pool_config = {"min_size": 4, "max_size": 32}
+        url_dict = dj_database_url.config(pool=pool_config)
+        assert url_dict["OPTIONS"]["pool"] == pool_config
+
+    def test_pool_query_string_boolean(self) -> None:
+        url_true = dj_database_url.parse("postgres://u:p@localhost/db?pool=true")
+        assert url_true["OPTIONS"]["pool"] is True
+
+        url_false = dj_database_url.parse("postgres://u:p@localhost/db?pool=false")
+        assert url_false["OPTIONS"]["pool"] is False
+
+    def test_pool_query_string_nested(self) -> None:
+        url = dj_database_url.parse(
+            "postgres://u:p@localhost/db?pool__min_size=4&pool__max_size=32&pool__timeout=30"
+        )
+        assert url["OPTIONS"]["pool"] == {
+            "min_size": 4,
+            "max_size": 32,
+            "timeout": 30,
+        }
+
+    def test_pool_query_string_and_kwarg_merge(self) -> None:
+        url = dj_database_url.parse(
+            "postgres://u:p@localhost/db?pool__min_size=2",
+            pool={"max_size": 16},
+        )
+        assert url["OPTIONS"]["pool"] == {
+            "min_size": 2,
+            "max_size": 16,
+        }
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -146,6 +146,12 @@ default of ``False``. Enabling it is recommended if you set a non-zero
 .. |CONN_HEALTH_CHECKS setting| replace:: ``CONN_HEALTH_CHECKS`` setting
 __ https://docs.djangoproject.com/en/stable/ref/settings/#conn-health-checks
 
+``pool`` sets the database connection pool option (new in Django 5.1).
+You can pass a boolean (e.g. ``pool=True``) or a dictionary of pool options
+(e.g. ``pool={"min_size": 4, "max_size": 32}``). In database URLs, query
+parameters prefixed with ``pool__`` (e.g. ``?pool__min_size=4``) or boolean
+flags (e.g. ``?pool=true``) are also supported.
+
 Strings passed to `dj_database_url` must be valid URLs; in
 particular, special characters must be url-encoded. The following url will raise
 a `ValueError`:
