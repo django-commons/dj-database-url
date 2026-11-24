@@ -227,7 +227,11 @@ def apply_current_schema(parsed_config: DBConfig) -> None:
     schema = options.pop("currentSchema", None)
     if schema:
         escaped = _escape_libpq_option_value(str(schema))
-        options["options"] = f"-c search_path={escaped}"
+        schema_option = f"-c search_path={escaped}"
+        existing_options = options.get("options")
+        options["options"] = (
+            f"{existing_options} {schema_option}" if existing_options else schema_option
+        )
 
 
 def config(
