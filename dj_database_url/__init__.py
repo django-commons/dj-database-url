@@ -282,8 +282,13 @@ def parse(
         # this is a special case, because if we pass this URL into
         # urlparse, urlparse will choke trying to interpret "memory"
         # as a port number
-        return {"ENGINE": ENGINE_SCHEMES["sqlite"].backend, "NAME": ":memory:"}
-        # note: no other settings are required for sqlite
+        memory_config: DBConfig = {
+            "ENGINE": engine or ENGINE_SCHEMES["sqlite"].backend,
+            "NAME": ":memory:",
+        }
+        if test_options:
+            memory_config["TEST"] = test_options
+        return memory_config
 
     try:
         split_result = urlparse.urlsplit(url)
